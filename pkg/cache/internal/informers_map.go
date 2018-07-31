@@ -23,6 +23,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
@@ -151,10 +152,11 @@ func (ip *InformersMap) Get(gvk schema.GroupVersionKind, obj runtime.Object) (*M
 		if ok {
 			return i, nil
 		}
+		_, isUnstructured := obj.(*unstructured.Unstructured)
 
 		// Create a NewSharedIndexInformer and add it to the map.
 		var lw *cache.ListWatch
-		lw, err := ip.newListWatch(gvk)
+		lw, err := ip.newListWatch(gvk, isUnstructured)
 		if err != nil {
 			return nil, err
 		}
@@ -191,10 +193,17 @@ func (ip *InformersMap) Get(gvk schema.GroupVersionKind, obj runtime.Object) (*M
 }
 
 // newListWatch returns a new ListWatch object that can be used to create a SharedIndexInformer.
-func (ip *InformersMap) newListWatch(gvk schema.GroupVersionKind) (*cache.ListWatch, error) {
+func (ip *InformersMap) newListWatch(gvk schema.GroupVersionKind, isUnstructured bool) (*cache.ListWatch, error) {
 	// Construct a RESTClient for the groupVersionKind that we will use to
 	// talk to the apiserver.
-	client, err := apiutil.RESTClientForGVK(gvk, ip.config, ip.codecs)
+	var client rest.Interface
+	var err error
+	if isUnstructured {
+		client, err = apiutil.RESTUnstructuredClientForGVK(gvk, ip.config)
+	} else {
+		client, err = apiutil.RESTClientForGVK(gvk, ip.config, ip.codecs)
+
+	}
 	if err != nil {
 		return nil, err
 	}
