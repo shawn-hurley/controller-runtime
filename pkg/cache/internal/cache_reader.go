@@ -18,13 +18,11 @@ package internal
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"reflect"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	apimeta "k8s.io/apimachinery/pkg/api/meta"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -74,21 +72,6 @@ func (c *CacheReader) Get(_ context.Context, key client.ObjectKey, out runtime.O
 	// deep copy to avoid mutating cache
 	// TODO(directxman12): revisit the decision to always deepcopy
 	obj = obj.(runtime.Object).DeepCopyObject()
-
-	// If out is supposed to be unstructured handle correctly.
-	if o, ok := out.(*unstructured.Unstructured); ok {
-		//Encode the obj to a map[string]interface and et the out.Object
-		b, err := json.Marshal(obj)
-		if err != nil {
-			return err
-		}
-		err = json.Unmarshal(b, o)
-		if err != nil {
-			return err
-		}
-		o.SetGroupVersionKind(c.groupVersionKind)
-		return nil
-	}
 
 	// Copy the value of the item in the cache to the returned value
 	// TODO(directxman12): this is a terrible hack, pls fix (we should have deepcopyinto)
