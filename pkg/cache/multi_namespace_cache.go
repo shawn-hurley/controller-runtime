@@ -18,12 +18,11 @@ package cache
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
+	"reflect"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/rest"
@@ -150,23 +149,26 @@ func (c *multiNamespaceCache) List(ctx context.Context, list runtime.Object, opt
 	if err != nil {
 		return err
 	}
-	allItems := &unstructured.UnstructuredList{}
+
+	vAllItems := reflect.ValueOf(list).Elem().FieldByName("Items")
+	vResourceVersion := reflect.ValueOf(list).Elem().FieldByName("ResourceVersion")
 	for _, cache := range c.namespaceToCache {
-		items := &unstructured.UnstructuredList{}
-		items.SetGroupVersionKind(gvk)
-		err := cache.List(ctx, items, opts...)
+		items, err := c.Scheme.New(gvk)
 		if err != nil {
 			return err
 		}
-		allItems.Items = append(allItems.Items, items.Items...)
+		err = cache.List(ctx, items, opts...)
+		if err != nil {
+			return err
+		}
+		elems := reflect.ValueOf(items).Elem()
+		vItems := elems.FieldByName("Items")
+		vRV := elems.FieldByName("ResourceVersion")
+		vAllItems = reflect.AppendSlice(vAllItems, vItems)
 		// The last list call should have the most correct resource version.
-		allItems.Object = items.Object
+		vResourceVersion.SetString(vRV.String())
 	}
-	data, err := allItems.MarshalJSON()
-	if err != nil {
-		return err
-	}
-	return json.Unmarshal(data, list)
+	return nil
 }
 
 // multiNamespaceInformer knows how to handle interacting with the underlying informer across multiple namespaces
