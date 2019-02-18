@@ -168,6 +168,9 @@ func (c *multiNamespaceCache) List(ctx context.Context, list runtime.Object, opt
 		// The last list call should have the most correct resource version.
 		vResourceVersion.SetString(vRV.String())
 	}
+	reflect.ValueOf(list).Elem().FieldByName("Items").Set(vAllItems)
+	reflect.ValueOf(list).Elem().FieldByName("ResourceVersion").Set(vResourceVersion)
+
 	return nil
 }
 
