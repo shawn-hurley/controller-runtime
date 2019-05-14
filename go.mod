@@ -57,5 +57,5 @@ require (
 	k8s.io/klog v0.1.0 // indirect
 	k8s.io/kube-openapi v0.0.0-20180731170545-e3762e86a74c // indirect
 	sigs.k8s.io/testing_frameworks v0.1.1
-	sigs.k8s.io/yaml v1.1.0 // indirect
+	sigs.k8s.io/yaml v1.1.0
 )
